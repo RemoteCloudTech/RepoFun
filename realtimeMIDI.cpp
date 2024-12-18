@@ -1,22 +1,15 @@
+// midiprobe.cpp
 
 #include <iostream>
 #include <cstdlib>
 #include <RtMidi.h>
 
-// Callback function to handle incoming MIDI messages
-void midiCallback(double deltatime, std::vector<unsigned char>* message, void* userData) {
-    unsigned int nBytes = message->size();
-    for (unsigned int i = 0; i < nBytes; i++) {
-        std::cout << "Byte " << i << " = " << (int)message->at(i) << ", ";
-    }
-    if (nBytes > 0)
-        std::cout << "stamp = " << deltatime << std::endl;
-}
+int main()
+{
+    RtMidiIn* midiin = 0;
+    RtMidiOut* midiout = 0;
 
-int main() {
-    RtMidiIn* midiin = nullptr;
-
-    // Create an RtMidiIn instance
+    // RtMidiIn constructor
     try {
         midiin = new RtMidiIn();
     }
@@ -25,30 +18,49 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // Check available ports
+    // Check inputs.
     unsigned int nPorts = midiin->getPortCount();
-    if (nPorts == 0) {
-        std::cout << "No MIDI input ports available!" << std::endl;
-        delete midiin;
-        return 0;
+    std::cout << "\nThere are " << nPorts << " MIDI input sources available.\n";
+    std::string portName;
+    for (unsigned int i = 0; i < nPorts; i++) {
+        try {
+            portName = midiin->getPortName(i);
+        }
+        catch (RtMidiError& error) {
+            error.printMessage();
+            goto cleanup;
+        }
+        std::cout << "  Input Port #" << i + 1 << ": " << portName << '\n';
     }
 
-    // Open the first available port
-    midiin->openPort(0);
+    // RtMidiOut constructor
+    try {
+        midiout = new RtMidiOut();
+    }
+    catch (RtMidiError& error) {
+        error.printMessage();
+        exit(EXIT_FAILURE);
+    }
 
-    // Set the callback function
-    midiin->setCallback(&midiCallback);
-
-    // Don't ignore sysex, timing, or active sensing messages
-    midiin->ignoreTypes(false, false, false);
-
-    // Wait for input
-    std::cout << "Reading MIDI input ... press <enter> to quit." << std::endl;
-    char input;
-    std::cin.get(input);
+    // Check outputs.
+    nPorts = midiout->getPortCount();
+    std::cout << "\nThere are " << nPorts << " MIDI output ports available.\n";
+    for (unsigned int i = 0; i < nPorts; i++) {
+        try {
+            portName = midiout->getPortName(i);
+        }
+        catch (RtMidiError& error) {
+            error.printMessage();
+            goto cleanup;
+        }
+        std::cout << "  Output Port #" << i + 1 << ": " << portName << '\n';
+    }
+    std::cout << '\n';
 
     // Clean up
+cleanup:
     delete midiin;
+    delete midiout;
 
     return 0;
 }
